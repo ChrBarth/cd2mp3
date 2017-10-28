@@ -3,6 +3,8 @@
 # Version 18.06.2016: CD-Text Support!
 # sudo apt-get install libdevice-cdio-perl
 # aufgepeppte version ;) 20.02.2005
+# 
+# Branch: id3v2 (benutzt id3v2 statt mp3info für mp3-Tags -> v2 statt v1)
 
 use strict;
 use CDDB_get qw( get_cddb );
@@ -61,8 +63,8 @@ if (not defined $ARGV[0])  {
  help();  }
 
 foreach (@ARGV) {
-        $artist=$_ if (s/--a=(.*)/$1/);
-        $album=$_ if (s/--l=(.*)/$1/);
+    $artist=$_ if (s/--a=(.*)/$1/);
+    $album=$_ if (s/--l=(.*)/$1/);
 	$bitrate=$_ if (s/--b=(.*)/$1/);
 	$cdrom_device=$_ if (s/--d=(.*)/$1/);
 	$interactive="YES" if (/--interactive/);
@@ -181,11 +183,10 @@ my $tt;
 foreach my $wavfile (@wavfiles)
 {
  # titel setzen
+ $tt = "unknown"
  if ($use_cddb eq "YES" || $use_cdtext eq "YES")  {
  			   my $tn = $tracknr - 1;
                            $tt = $tracktitle[$tn];   }
- else                     {
-			   $tt = "untitled";   }
 
  # flac-Patch:
 if ($encoder eq "flac") {
@@ -206,8 +207,10 @@ else			{
 			  ### END DEBUG
 			  my $enc_status = system("$encoder -b \"$bitrate\" \"$wavfile\" \"$mp3file\"");
 			  die "Konnte $wavfile nicht encoden: $!" unless $enc_status == 0;
-			  # tag setzen (mp3info)
-			  my $tag_status = system("mp3info -a \"$artist\" -l \"$album\" -t \"$tt\" -n \"$tracknr\" -y \"$year\" -g \"$genre\" \'$mp3file\'");
+			  # tag setzen (mp3info) ==> ALT!
+			  #my $tag_status = system("mp3info -a \"$artist\" -l \"$album\" -t \"$tt\" -n \"$tracknr\" -y \"$year\" -g \"$genre\" \'$mp3file\'");
+              # tag schreiben (id3v2):
+			  my $tag_status = system("id3v2 -a \"$artist\" -A \"$album\" -t \"$tt\" -T \"$tracknr\" -y \"$year\" -g \"$genre\" \'$mp3file\'");
 			  die "Konnte tag für $mp3file nicht schreiben" unless ($tag_status==0);
 			  }
  $tracknr++;
