@@ -183,7 +183,7 @@ my $tt;
 foreach my $wavfile (@wavfiles)
 {
  # titel setzen
- $tt = "unknown"
+ $tt = "unknown";
  if ($use_cddb eq "YES" || $use_cdtext eq "YES")  {
  			   my $tn = $tracknr - 1;
                            $tt = $tracktitle[$tn];   }
