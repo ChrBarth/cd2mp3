@@ -1,10 +1,10 @@
 # cd2mp3
 
-a commandline cd-ripper written in python
+a commandline cd-ripper written in python replacing my good old perl-script from around 2005 :)
 
 ## usage:
 
-At the moment just run the script. It will try to get the discid and use it to fetch info from musicbrainz to tag the mp3-files. Later versions will allow you to specify a bitrate and some other options. If the path to your CD/DVD-drive is not "/dev/cdrom", you have to change that in the script.
+Just run the script and it will rip the audio-cd inserted in /dev/cdrom into the current directory and convert the files to mp3 (256kb). It will also try to tag the files with the help of musicbrainz (https://musicbrainz.org/). Most settings can be changed from the command line. For a complete list of command-line options use *cd2mp3.py -h*.
 
 ## requirements:
 
