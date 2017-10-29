@@ -24,16 +24,6 @@ year     = 0
 
 track    = []
 
-def run_cmd(args):
-    """ function that calls system commands
-        returns the output """
-    p = subprocess.Popen(args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True)
-    output = p.communicate()
-    return output[0]
-
 # get discid:
 try:
     disc = discid.read(device)
@@ -61,4 +51,14 @@ else:
         tracktitle = entry['recording']['title']
         track.append(tracktitle)
         print("%02d - %s" % (track.index(tracktitle)+1, tracktitle))
+
+# ripping the disc:
+filepattern = artist + "-" + title
+proc = subprocess.run(["cdda2wav", "-B", "-H", "-D", device, filepattern], stdout=subprocess.PIPE)
+
+if proc.returncode != 0:
+    print("cdda2wav exited with code %d" % proc.returncode)
+    exit(1)
+
+# converting to mp3:
 
