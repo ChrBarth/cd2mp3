@@ -1,10 +1,15 @@
 # cd2mp3
 
-a commandline cd-ripper based on perl (python version coming soon)
+a commandline cd-ripper written in python
 
-## changelog:
+## usage:
 
-### 2017-10-28:
-* using git as version control
-* switched from mp3info to id3v2 as mp3-tagger (supports id3v2-tags)
-* started working on python3 version (problems: cddb-module only available for python 2.7)
+At the moment just run the script. It will try to get the discid and use it to fetch info from musicbrainz to tag the mp3-files. Later versions will allow you to specify a bitrate and some other options.
+
+## requirements:
+
+* python3
+* discid (pip3 install discid)
+* musicbrainzngs (pip3 install musicbrainzngs)
+* lame
+* id3v2
