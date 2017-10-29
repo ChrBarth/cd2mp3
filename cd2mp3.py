@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# cd ripper in python
+# cd ripper in python3
 # rips audio cd to mp3-files into current directory
 
 #TODO:
@@ -35,16 +35,30 @@ def run_cmd(args):
     return output[0]
 
 # get discid:
-disc = discid.read(device)
+try:
+    disc = discid.read(device)
+except discid.DiscError:
+    print("Disc error!")
+    exit(1)
+
 # set the musicbrainz useragent_
 musicbrainzngs.set_useragent("cd2mp3","0.1",None)
 # needs "includes=..." to get a non-empty tracklist:
-result    = musicbrainzngs.get_releases_by_discid(disc.id, includes=["artists", "recordings"])
-release   = result['disc']['release-list'][0]
-artist    = release['artist-credit-phrase']
-title     = release['title']
-tracklist = release['medium-list'][0]['track-list']
-for entry in tracklist:
-    track.append(entry['recording']['title'])
-    print("appending %s" % (entry['recording']['title']))
+try:
+    result    = musicbrainzngs.get_releases_by_discid(disc.id,
+                                                  includes=["artists", "recordings"])
+except musicbrainzngs.ResponseError:
+    print("No matches found on musicbrainz...")
+else:
+    # the above command returns a dict of more dicts,lists, even more dicts...
+    release   = result['disc']['release-list'][0]
+    artist    = release['artist-credit-phrase']
+    title     = release['title']
+    tracklist = release['medium-list'][0]['track-list']
+    print("Artist: ",artist)
+    print("Album:  ",title)
+    for entry in tracklist:
+        tracktitle = entry['recording']['title']
+        track.append(tracktitle)
+        print("%02d - %s" % (track.index(tracktitle)+1, tracktitle))
 
