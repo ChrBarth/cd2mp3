@@ -5,7 +5,6 @@
 
 #TODO:
 # * parse commandline arguments
-# * logging?
 
 # requires discid and musicbrainzngs for musicbrainz-support (instead of cddb)
 # (pip3 install discid musicbrainzngs)
@@ -14,22 +13,36 @@ import musicbrainzngs
 import subprocess
 import glob
 import os
+import argparse
 
 device      = '/dev/cdrom'
 bitrate     = 256
 use_cddb    = False
 encoder     = 'lame'
 do_encode   = True
-do_rip      = True
-remove_wav  = True
+do_rip      = False
+remove_wav  = False
 write_tags  = True
+directory   = os.getcwd()
 
 artist   = 'unknown'
 title    = 'unknown'
 year     = 0
+genre    = 12
 
 track    = []
 tracknum = 0
+
+parser = argparse.ArgumentParser(description="Rips audio cd to mp3 files")
+parser.add_argument("-b", "--bitrate", type=int, help="specify bitrate")
+parser.add_argument("-d", "--device", help="path to your cdrom-device")
+parser.add_argument("-D", "--workdir", help="output directory")
+
+parser.parse_args()
+
+# changing to working directory:
+if os.isdir(directory):
+    os.chdir(directory)
 
 # get discid:
 try:
