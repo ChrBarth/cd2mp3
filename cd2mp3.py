@@ -12,21 +12,29 @@
 import discid
 import musicbrainzngs
 import subprocess
+import glob
+import os
 
-device   = '/dev/cdrom'
-bitrate  = 256
-use_cddb = False
-encoder  = 'lame'
+device      = '/dev/cdrom'
+bitrate     = 256
+use_cddb    = False
+encoder     = 'lame'
+do_encode   = True
+do_rip      = True
+remove_wav  = True
+write_tags  = True
 
 artist   = 'unknown'
 title    = 'unknown'
 year     = 0
 
 track    = []
+tracknum = 0
 
 # get discid:
 try:
     disc = discid.read(device)
+    tracknum = disc.last_track_num
 except discid.DiscError:
     print("Disc error!")
     exit(1)
@@ -47,18 +55,45 @@ else:
     tracklist = release['medium-list'][0]['track-list']
     print("Artist: ",artist)
     print("Album:  ",title)
+    print("%d track(s)" % tracknum)
     for entry in tracklist:
         tracktitle = entry['recording']['title']
         track.append(tracktitle)
         print("%02d - %s" % (track.index(tracktitle)+1, tracktitle))
 
-# ripping the disc:
 filepattern = artist + "-" + title
-proc = subprocess.run(["cdda2wav", "-B", "-H", "-D", device, filepattern], stdout=subprocess.PIPE)
+filepattern = filepattern.replace("'","")
+filepattern = filepattern.replace("’","")
+filepattern = filepattern.replace(" ","_")
 
-if proc.returncode != 0:
-    print("cdda2wav exited with code %d" % proc.returncode)
-    exit(1)
+if do_rip == True:
+    # ripping the disc:
+    proc = subprocess.run(["cdda2wav", "-B", "-H", "-D", device, filepattern],
+                           stdout=subprocess.PIPE)
+    if proc.returncode != 0:
+        print("cdda2wav exited with code %d" % proc.returncode)
+        exit(1)
 
-# converting to mp3:
+trackno = 0
+if do_encode == True:
+    # converting to mp3:
+    filelist = sorted(glob.glob(filepattern+"*.wav"))
+    for wavfile in filelist:
+        mp3file = wavfile.replace(".wav",".mp3")
+        print(wavfile,"==>",mp3file)
+        encproc = subprocess.run([encoder, "-b", str(bitrate), wavfile, mp3file],
+                                  stdout=subprocess.PIPE)
+        if encproc.returncode != 0:
+            print("encoder exited with code %d" % proc.returncode)
+            exit(1)
+        if write_tags == True:
+            print("Writing id3v2-tag for %s (%s)..." % (mp3file, track[trackno]))
+            tagproc = subprocess.run(["id3v2", "-a", artist, "-A", title,
+                                      "-t", track[trackno], mp3file],
+                                      stdout=subprocess.PIPE)
+        if remove_wav == True:
+            # remove .wav file:
+            os.remove(wavfile)
+        trackno = trackno+1
+
 
