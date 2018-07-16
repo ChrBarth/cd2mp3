@@ -122,10 +122,7 @@ if write_tags:
         disc = libdiscid.read(device)
         tracknum = disc.last_track
     except libdiscid.DiscError:
-        print("Disc error!")
-        exit(1)
-    except libdiscid.NameError:
-        print("Name Error, probably no disc inserted/found!")
+        print("Disc error! Please make sure a disc is inserted and {} is the right device!".format(device))
         exit(1)
 
     # set the musicbrainz useragent_
