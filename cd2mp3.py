@@ -7,14 +7,21 @@
 # get year from musicbrainz
 # maybe do the tagging while encoding with lame (so we would not need id3v2 any more)
 
-# requires discid and musicbrainzngs for musicbrainz-support (instead of cddb)
-# (pip3 install discid musicbrainzngs)
-import discid
+# requires libdiscid and musicbrainzngs for musicbrainz-support (instead of cddb)
+# and cd-info as a fallback (reads cd-text)
+# (sudo apt install python3-libdiscid python3-musicbrainzngs libcdio-utils)
+
+# discid: Ubuntu 16.04:
+#import discid
+
+# libdiscid: Ubuntu 18.04:
+import libdiscid
 import musicbrainzngs
 import subprocess
 import glob
 import os
 import argparse
+import re
 
 device      = '/dev/cdrom'
 bitrate     = 256
@@ -77,8 +84,8 @@ if os.path.isdir(directory):
 
 # get discid:
 try:
-    disc = discid.read(device)
-    tracknum = disc.last_track_num
+    disc = libdiscid.read(device)
+    tracknum = disc.last_track
 except discid.DiscError:
     print("Disc error!")
     exit(1)
@@ -90,7 +97,31 @@ try:
     result    = musicbrainzngs.get_releases_by_discid(disc.id,
                                                   includes=["artists", "recordings"])
 except musicbrainzngs.ResponseError:
-    print("No matches found on musicbrainz...")
+    print("No matches found on musicbrainz... Trying cd-info:")
+    cmd = ["cd-info", "-C", device, "--no-header", "--no-disc-mode"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    for line in proc.stdout.readlines():
+        #find all "\tTITLE: (TITLE)" lines:
+        pattern = re.compile("^\tTITLE: (.*)\n")
+        m = re.match(pattern, line.decode("utf-8"))
+        if m:
+            track.append(m.group(1))
+            print("Added track {}".format(m.group(1)))
+        else:
+            # do we have an artist?
+            # this does obviously not work with samplers,
+            # since everytime a matching line is found,
+            # the artist-variable will be overwritten...
+            pattern = re.compile("^\tPERFORMER: (.*)\n")
+            m = re.match(pattern, line.decode("utf-8"))
+            if m:
+                artist = m.group(1)
+    if len(track)>0:
+        # if we found any info, remove first entry
+        # since it is the album title:
+        title = track.pop(0)
+        print("Album: {} - {}".format(artist, title))
+
 else:
     # the above command returns a dict of more dicts,lists, even more dicts...
     release   = result['disc']['release-list'][0]
@@ -130,7 +161,7 @@ if do_encode == True:
         if encproc.returncode != 0:
             print("encoder exited with code %d" % proc.returncode)
             exit(1)
-        if write_tags == True:
+        if write_tags == True and len(track)>0:
             print("Writing id3v2-tag for %s (%s)..." % (mp3file, track[trackno]))
             tagproc = subprocess.run(["id3v2", "-a", artist, "-A", title,
                                       "-t", track[trackno], "-y", str(year),
