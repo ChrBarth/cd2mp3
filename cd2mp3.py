@@ -82,59 +82,75 @@ if args.encoder != None:
 if os.path.isdir(directory):
     os.chdir(directory)
 
-# get discid:
-try:
-    disc = libdiscid.read(device)
-    tracknum = disc.last_track
-except discid.DiscError:
-    print("Disc error!")
-    exit(1)
-
-# set the musicbrainz useragent_
-musicbrainzngs.set_useragent("cd2mp3","0.1",None)
-# needs "includes=..." to get a non-empty tracklist:
-try:
-    result    = musicbrainzngs.get_releases_by_discid(disc.id,
-                                                  includes=["artists", "recordings"])
-except musicbrainzngs.ResponseError:
-    print("No matches found on musicbrainz... Trying cd-info:")
+def get_cdtextinfo():
     cmd = ["cd-info", "-C", device, "--no-header", "--no-disc-mode"]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    for line in proc.stdout.readlines():
-        #find all "\tTITLE: (TITLE)" lines:
-        pattern = re.compile("^\tTITLE: (.*)\n")
-        m = re.match(pattern, line.decode("utf-8"))
-        if m:
-            track.append(m.group(1))
-            print("Added track {}".format(m.group(1)))
-        else:
-            # do we have an artist?
-            # this does obviously not work with samplers,
-            # since everytime a matching line is found,
-            # the artist-variable will be overwritten...
-            pattern = re.compile("^\tPERFORMER: (.*)\n")
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    except:
+        print("Could not get cd-info for {}!".format(device))
+        write_tags = False
+        pass
+    else:
+        for line in proc.stdout.readlines():
+            #find all "\tTITLE: (TITLE)" lines:
+            pattern = re.compile("^\tTITLE: (.*)\n")
             m = re.match(pattern, line.decode("utf-8"))
             if m:
-                artist = m.group(1)
-    if len(track)>0:
-        # if we found any info, remove first entry
-        # since it is the album title:
-        title = track.pop(0)
-        print("Album: {} - {}".format(artist, title))
+                track.append(m.group(1))
+                print("Added track {}".format(m.group(1)))
+            else:
+                # do we have an artist?
+                # this does obviously not work with samplers,
+                # since everytime a matching line is found,
+                # the artist-variable will be overwritten...
+                pattern = re.compile("^\tPERFORMER: (.*)\n")
+                m = re.match(pattern, line.decode("utf-8"))
+                if m:
+                    artist = m.group(1)
+        if len(track)>0:
+            # if we found any info, remove first entry
+            # since it is the album title:
+            title = track.pop(0)
+            print("Album: {} - {}".format(artist, title))
+        else:
+            write_tags = False
 
-else:
-    # the above command returns a dict of more dicts,lists, even more dicts...
-    release   = result['disc']['release-list'][0]
-    artist    = release['artist-credit-phrase']
-    title     = release['title']
-    tracklist = release['medium-list'][0]['track-list']
-    print("Artist: ",artist)
-    print("Album:  ",title)
-    print("%d track(s)" % tracknum)
-    for entry in tracklist:
-        tracktitle = entry['recording']['title']
-        track.append(tracktitle)
-        print("%02d - %s" % (track.index(tracktitle)+1, tracktitle))
+if write_tags:
+
+    # get discid:
+    try:
+        disc = libdiscid.read(device)
+        tracknum = disc.last_track
+    except libdiscid.DiscError:
+        print("Disc error!")
+        exit(1)
+    except libdiscid.NameError:
+        print("Name Error, probably no disc inserted/found!")
+        exit(1)
+
+    # set the musicbrainz useragent_
+    musicbrainzngs.set_useragent("cd2mp3","0.2",None)
+    # needs "includes=..." to get a non-empty tracklist:
+    try:
+        result    = musicbrainzngs.get_releases_by_discid(disc.id,
+                                                      includes=["artists", "recordings"])
+    except musicbrainzngs.ResponseError:
+        print("No matches found on musicbrainz... Trying cd-info:")
+        get_cdtextinfo()
+
+    else:
+        # the above command returns a dict of more dicts,lists, even more dicts...
+        release   = result['disc']['release-list'][0]
+        artist    = release['artist-credit-phrase']
+        title     = release['title']
+        tracklist = release['medium-list'][0]['track-list']
+        print("Artist: ",artist)
+        print("Album:  ",title)
+        print("%d track(s)" % tracknum)
+        for entry in tracklist:
+            tracktitle = entry['recording']['title']
+            track.append(tracktitle)
+            print("%02d - %s" % (track.index(tracktitle)+1, tracktitle))
 
 filepattern = artist + "-" + title
 filepattern = filepattern.replace("'","")
@@ -143,7 +159,7 @@ filepattern = filepattern.replace(" ","_")
 
 if do_rip == True:
     # ripping the disc:
-    proc = subprocess.run(["cdda2wav", "-B", "-H", "-D", device, filepattern],
+    proc = subprocess.run(["cdda2wav", "-B", "-H", "-Q", "-D", device, filepattern],
                            stdout=subprocess.PIPE)
     if proc.returncode != 0:
         print("cdda2wav exited with code %d" % proc.returncode)
