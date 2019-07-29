@@ -30,6 +30,7 @@ do_encode   = True
 do_rip      = True
 remove_wav  = True
 write_tags  = True
+use_cdtext  = False
 directory   = os.getcwd()
 cur_dir     = directory
 
@@ -47,6 +48,7 @@ parser.add_argument("-d", "--device", help="path to your cdrom-device")
 parser.add_argument("-D", "--workdir", help="output directory")
 parser.add_argument("--norip", action="store_true", help="Don't rip the cd (just encode wav-files)")
 parser.add_argument("--notags", action="store_true", help="Don't write id3-tags")
+parser.add_argument("--cdtext", action="store_true", help="use CD-Text info for tags")
 parser.add_argument("--nodelete", action="store_true", help="Don't delete wav files after encoding")
 parser.add_argument("-y", "--year", help="id3-tag: year")
 parser.add_argument("-a", "--artist", help="id3-tag: artist")
@@ -77,12 +79,15 @@ if args.genre != None:
     genre = args.genre
 if args.encoder != None:
     encoder = args.encoder
-    
+if args.cdtext:
+    use_cdtext = True
+
 # changing to working directory:
 if os.path.isdir(directory):
     os.chdir(directory)
 
 def get_cdtextinfo():
+    global artist, title, track
     cmd = ["cd-info", "-C", device, "--no-header", "--no-disc-mode"]
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -115,7 +120,10 @@ def get_cdtextinfo():
         else:
             write_tags = False
 
-if write_tags:
+if write_tags and use_cdtext:
+    get_cdtextinfo()
+
+elif write_tags and not use_cdtext:
 
     # get discid:
     try:
@@ -154,7 +162,7 @@ filepattern = filepattern.replace("'","")
 filepattern = filepattern.replace("’","")
 filepattern = filepattern.replace(" ","_")
 
-if do_rip == True:
+if do_rip:
     # ripping the disc:
     proc = subprocess.run(["cdda2wav", "-B", "-H", "-Q", "-D", device, filepattern],
                            stdout=subprocess.PIPE)
@@ -162,8 +170,8 @@ if do_rip == True:
         print("cdda2wav exited with code %d" % proc.returncode)
         exit(1)
 
-trackno = 0
-if do_encode == True:
+if do_encode:
+    trackno = 0
     # converting to mp3:
     filelist = sorted(glob.glob(filepattern+"*.wav"))
     for wavfile in filelist:
