@@ -161,6 +161,7 @@ filepattern = artist + "-" + title
 filepattern = filepattern.replace("'","")
 filepattern = filepattern.replace("’","")
 filepattern = filepattern.replace(" ","_")
+filepattern = filepattern.replace("/","")
 
 if do_rip:
     # ripping the disc:
